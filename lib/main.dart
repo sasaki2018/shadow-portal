@@ -5,16 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // INICIALIZACIÓN DE FIREBASE (Asegúrate de colocar tu configuración real si usas flutterfire CLI, 
-  // por defecto inicializa con la plataforma web configurada)
   await Firebase.initializeApp(
     options: const FirebaseOptions(
-      apiKey: "TU_API_KEY_DE_FIREBASE",
-      appId: "TU_APP_ID",
-      messagingSenderId: "TU_SENDER_ID",
-      projectId: "shadow-portal-db",
-      authDomain: "shadow-portal-db.firebaseapp.com",
-      storageBucket: "shadow-portal-db.appspot.com",
+      apiKey: "AIzaSyCueptxZ0jY6JECLfqcxwHlXCJgF76TZ7w",
+      appId: "1:387554911294:web:ec0d2cfc2d90802a071d6f",
+      messagingSenderId: "387554911294",
+      projectId: "shadowportaldb",
+      authDomain: "shadowportaldb.firebaseapp.com",
+      storageBucket: "shadowportaldb.firebasestorage.app",
     ),
   );
   runApp(const ShadowPortalApp());
@@ -65,7 +63,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return;
     }
 
-    // Validación estricta de Admin
     if (email == 'admin@teamshadow.com' && pass != 'sasaki123') {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña de Administrador incorrecta (sasaki123)')));
       return;
@@ -79,7 +76,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
         cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
       } else {
         cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
-        // Crear documento inicial en Firestore
         await FirebaseFirestore.instance.collection('usuarios').doc(cred.user!.uid).set({
           'email': email,
           'nombre': _nombreCtrl.text.isNotEmpty ? _nombreCtrl.text : 'Usuario Cyber',
@@ -92,7 +88,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           'sueldo': '0',
           'direccionTrabajo': '',
           'gradoEstudios': 'Estudiante',
-          'tcu': 'No',
+          'tcu': '',
           'datosPagoNomina': '',
           'saldoPuntos': 100.0,
           'esAdmin': email == 'admin@teamshadow.com',
@@ -205,7 +201,6 @@ class MenuPrincipal extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Banner de Perfil y Saldo
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -232,16 +227,12 @@ class MenuPrincipal extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Panel Exclusivo Admin
                     if (esAdmin) ...[
                       const PanelAdminWidget(),
                       const SizedBox(height: 20),
                     ],
-
                     const Text('MÓDULOS DE REGISTRO', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
-
                     GridView.count(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -258,7 +249,6 @@ class MenuPrincipal extends StatelessWidget {
                           subtitulo: 'Reclamar Bonos en la Nube',
                           icono: Icons.payments,
                           onTap: () {
-                            // VALIDACIÓN OBLIGATORIA DE CAMPOS
                             if (userData['cedula'].toString().isEmpty || userData['telefono'].toString().isEmpty || userData['empresa'].toString().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                                 backgroundColor: Colors.redAccent,
@@ -329,8 +319,8 @@ class PanelAdminWidget extends StatefulWidget {
 class _PanelAdminWidgetState extends State<PanelAdminWidget> {
   final tituloCtrl = TextEditingController();
   final puntosCtrl = TextEditingController();
-  String filtroTipo = 'Todos'; // 'Todos', 'Estudiante', 'Trabajador'
-  String filtroSangre = 'Cualquiera'; // 'Cualquiera', 'O+', 'O-', 'A+', 'B+'
+  String filtroTipo = 'Todos';
+  String filtroSangre = 'Cualquiera';
 
   void _crearBono() async {
     if (tituloCtrl.text.isEmpty || puntosCtrl.text.isEmpty) return;
@@ -340,7 +330,7 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
       'puntos': double.parse(puntosCtrl.text),
       'dirigidoOcupacion': filtroTipo,
       'dirigidoSangre': filtroSangre,
-      'creadoEn': FieldNameServerTime(),
+      'creadoEn': fieldNameServerTime(),
     });
 
     tituloCtrl.clear();
@@ -367,7 +357,7 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: filtroTipo,
+                  initialValue: filtroTipo,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Todos', 'Estudiante', 'Trabajador'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() => filtroTipo = v!),
@@ -377,7 +367,7 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: filtroSangre,
+                  initialValue: filtroSangre,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Cualquiera', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() => filtroSangre = v!),
@@ -397,7 +387,7 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
     );
   }
 
-  FieldValue FieldNameServerTime() => FieldValue.serverTimestamp();
+  FieldValue fieldNameServerTime() => FieldValue.serverTimestamp();
 }
 
 // ==================== SECCIÓN DE MONEDERO Y RECLAMO DE BONOS ====================
@@ -438,7 +428,6 @@ class SeccionBonosScreen extends StatelessWidget {
                     String reqOcupacion = bono['dirigidoOcupacion'] ?? 'Todos';
                     String reqSangre = bono['dirigidoSangre'] ?? 'Cualquiera';
 
-                    // Filtros exactos solicitados
                     bool pasaOcupacion = reqOcupacion == 'Todos' || reqOcupacion == miOcupacion;
                     bool pasaSangre = reqSangre == 'Cualquiera' || reqSangre == miSangre;
 
@@ -494,7 +483,7 @@ class SeccionBonosScreen extends StatelessWidget {
   }
 }
 
-// ==================== PANTALLAS DE REGISTRO GUARDADAS EN LA NUBE ====================
+// ==================== PANTALLAS DE REGISTRO EN LA NUBE ====================
 class DatosPersonalesScreen extends StatelessWidget {
   const DatosPersonalesScreen({super.key});
 
@@ -525,7 +514,7 @@ class DatosPersonalesScreen extends StatelessWidget {
                 TextField(controller: generoCtrl, decoration: const InputDecoration(labelText: 'Género')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: sangre,
+                  initialValue: sangre,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => sangre = v!,
@@ -581,7 +570,7 @@ class DatosLaboralesScreen extends StatelessWidget {
                 TextField(controller: empresaCtrl, decoration: const InputDecoration(labelText: 'Empresa en la que trabajas')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: trabaja,
+                  initialValue: trabaja,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Sí', 'No'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => trabaja = v!,
@@ -637,7 +626,7 @@ class EstudiosScreen extends StatelessWidget {
             child: ListView(
               children: [
                 DropdownButtonFormField<String>(
-                  value: grado,
+                  initialValue: grado,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Estudiante', 'Trabajador', 'Desempleado', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => grado = v!,
