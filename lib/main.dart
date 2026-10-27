@@ -24,7 +24,7 @@ class ShadowPortalApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Shadow Portal - Sistema Patria',
+      title: 'Shadow Portal — Team Shadow',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF070B19),
@@ -73,7 +73,36 @@ class _AuthWrapperState extends State<AuthWrapper> {
     try {
       UserCredential cred;
       if (esLogin) {
-        cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+        try {
+          cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'user-not-found' || e.code == 'invalid-credential' || e.code == 'invalid-email') {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                backgroundColor: const Color(0xFF0F172A),
+                title: const Text('¿No estás registrado?', style: TextStyle(color: Color(0xFF00FFCC))),
+                content: const Text('El correo ingresado no se encuentra registrado en el sistema Shadow Portal. Por favor, cambia a la pestaña de registro para crear una cuenta.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      setState(() => esLogin = false); // Cambia automáticamente a Registro
+                    },
+                    child: const Text('IR A REGISTRO', style: TextStyle(color: Color(0xFF00FFCC), fontWeight: FontWeight.bold)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('CERRAR', style: TextStyle(color: Colors.white54)),
+                  ),
+                ],
+              ),
+            );
+            return;
+          }
+          rethrow;
+        }
       } else {
         cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
         await FirebaseFirestore.instance.collection('usuarios').doc(cred.user!.uid).set({
@@ -81,7 +110,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           'nombre': _nombreCtrl.text.isNotEmpty ? _nombreCtrl.text : 'Usuario Cyber',
           'cedula': '',
           'telefono': '',
-          'genero': '',
+          'genero': 'Masculino',
           'grupoSanguineo': 'O+',
           'empresa': '',
           'trabaja': 'No',
@@ -89,7 +118,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
           'direccionTrabajo': '',
           'gradoEstudios': 'Estudiante',
           'tcu': '',
-          'datosPagoNomina': '',
+          'banco': '',
+          'tipoCuenta': 'Ahorros',
+          'nroCuenta': '',
           'saldoPuntos': 100.0,
           'esAdmin': email == 'admin@teamshadow.com',
         });
@@ -124,7 +155,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
                 children: [
                   const Icon(Icons.security, color: Color(0xFF00FFCC), size: 60),
                   const SizedBox(height: 10),
-                  Text(esLogin ? 'INICIAR SESIÓN' : 'REGISTRO PATRIA', style: const TextStyle(color: Color(0xFF00FFCC), fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Text('SHADOW PORTAL', style: TextStyle(color: Color(0xFF00FFCC), fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                  Text(esLogin ? 'INICIAR SESIÓN' : 'REGISTRO DE USUARIO', style: const TextStyle(color: Colors.white70, fontSize: 13)),
                   const SizedBox(height: 20),
                   if (!esLogin) ...[
                     TextField(controller: _nombreCtrl, decoration: const InputDecoration(labelText: 'Nombre Completo', prefixIcon: Icon(Icons.person))),
@@ -141,13 +173,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF00FFCC), foregroundColor: Colors.black),
                             onPressed: _manejarAuth,
-                            child: Text(esLogin ? 'INGRESAR' : 'REGISTRARSE', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            child: Text(esLogin ? 'INGRESAR AL SISTEMA' : 'CREAR CUENTA NUEVA', style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                   TextButton(
                     onPressed: () => setState(() => esLogin = !esLogin),
-                    child: Text(esLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión', style: const TextStyle(color: Color(0xFF0088FF))),
+                    child: Text(esLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión', style: const TextStyle(color: Color(0xFF0088FF))),
                   ),
+                  const SizedBox(height: 15),
+                  const Text('Desarrollado por: Leiver S Leandro P\nTeam Shadow © 2026', style: TextStyle(color: Colors.white38, fontSize: 10), textAlign: TextAlign.center),
                 ],
               ),
             ),
@@ -180,7 +214,7 @@ class MenuPrincipal extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(
             backgroundColor: const Color(0xFF070B19),
-            title: Text(esAdmin ? 'SHADOW PORTAL [ADMIN PANEL]' : 'SHADOW PORTAL [PATRIA]'),
+            title: Text(esAdmin ? 'SHADOW PORTAL [ADMIN PANEL]' : 'SHADOW PORTAL [DASHBOARD]'),
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout, color: Colors.redAccent),
@@ -214,7 +248,7 @@ class MenuPrincipal extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(userData['nombre'], style: const TextStyle(color: Color(0xFF00FFCC), fontSize: 18, fontWeight: FontWeight.bold)),
-                              Text('Sangre: ${userData['grupoSanguineo']} | Ocupación: ${userData['gradoEstudios']}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              Text('Género: ${userData['genero']} | Sangre: ${userData['grupoSanguineo']} | Rol: ${userData['gradoEstudios']}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                             ],
                           ),
                           Chip(
@@ -230,7 +264,7 @@ class MenuPrincipal extends StatelessWidget {
                       const PanelAdminWidget(),
                       const SizedBox(height: 20),
                     ],
-                    const Text('MÓDULOS DE REGISTRO', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
+                    const Text('MÓDULOS DE GESTIÓN Y PERFIL', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     GridView.count(
                       shrinkWrap: true,
@@ -240,18 +274,19 @@ class MenuPrincipal extends StatelessWidget {
                       mainAxisSpacing: 12,
                       childAspectRatio: 2.8,
                       children: [
-                        _BotonMenu(titulo: 'Datos Personales', subtitulo: 'CI, Teléfono, Sangre, Correo', icono: Icons.badge, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosPersonalesScreen()))),
-                        _BotonMenu(titulo: 'Datos Laborales', subtitulo: 'Empresa, Sueldo, Dirección', icono: Icons.work, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosLaboralesScreen()))),
-                        _BotonMenu(titulo: 'Estudios & TCU', subtitulo: 'Grado y Carrera', icono: Icons.school, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EstudiosScreen()))),
+                        _BotonMenu(titulo: 'Datos Personales', subtitulo: 'CI, Teléfono, Género, Sangre', icono: Icons.badge, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosPersonalesScreen()))),
+                        _BotonMenu(titulo: 'Datos Laborales', subtitulo: 'Empresa, Sueldo, Ocupación', icono: Icons.work, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosLaboralesScreen()))),
+                        _BotonMenu(titulo: 'Datos Bancarios', subtitulo: 'Banco, Tipo y Nro de Cuenta', icono: Icons.account_balance, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DatosBancariosScreen()))),
+                        _BotonMenu(titulo: 'Recarga y Transacciones', subtitulo: 'Historial y movimientos', icono: Icons.swap_horiz, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TransaccionesScreen()))),
                         _BotonMenu(
                           titulo: 'Monedero & Bonos',
                           subtitulo: 'Reclamar Bonos en la Nube',
                           icono: Icons.payments,
                           onTap: () {
-                            if (userData['cedula'].toString().isEmpty || userData['telefono'].toString().isEmpty || userData['empresa'].toString().isEmpty) {
+                            if (userData['cedula'].toString().isEmpty || userData['telefono'].toString().isEmpty || userData['empresa'].toString().isEmpty || userData['nroCuenta'].toString().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                                 backgroundColor: Colors.redAccent,
-                                content: Text('¡Obligatorio! Debes llenar tus Datos Personales y Laborales antes de acceder al Monedero.'),
+                                content: Text('¡Obligatorio! Debes llenar tus Datos Personales, Laborales y Bancarios antes de acceder al Monedero.'),
                               ));
                               return;
                             }
@@ -260,6 +295,9 @@ class MenuPrincipal extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 25),
+                    const Divider(color: Color(0xFF0088FF)),
+                    const Text('Desarrollado por: Leiver S Leandro P\nTeam Shadow © 2026', style: TextStyle(fontSize: 11, color: Color(0xFF00FFCC)), textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -307,7 +345,7 @@ class _BotonMenu extends StatelessWidget {
   }
 }
 
-// ==================== PANEL ADMIN PARA CREAR BONOS ====================
+// ==================== PANEL ADMIN AVANZADO PARA CREAR BONOS ====================
 class PanelAdminWidget extends StatefulWidget {
   const PanelAdminWidget({super.key});
 
@@ -318,8 +356,10 @@ class PanelAdminWidget extends StatefulWidget {
 class _PanelAdminWidgetState extends State<PanelAdminWidget> {
   final tituloCtrl = TextEditingController();
   final puntosCtrl = TextEditingController();
-  String filtroTipo = 'Todos';
+  String filtroOcupacion = 'Todos';
   String filtroSangre = 'Cualquiera';
+  String filtroGenero = 'Cualquiera';
+  String filtroTrabaja = 'Cualquiera';
 
   void _crearBono() async {
     if (tituloCtrl.text.isEmpty || puntosCtrl.text.isEmpty) return;
@@ -327,15 +367,17 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
     await FirebaseFirestore.instance.collection('bonos').add({
       'titulo': tituloCtrl.text.trim(),
       'puntos': double.parse(puntosCtrl.text),
-      'dirigidoOcupacion': filtroTipo,
+      'dirigidoOcupacion': filtroOcupacion,
       'dirigidoSangre': filtroSangre,
-      'creadoEn': fieldNameServerTime(),
+      'dirigidoGenero': filtroGenero,
+      'dirigidoTrabaja': filtroTrabaja,
+      'creadoEn': FieldValue.serverTimestamp(),
     });
 
     tituloCtrl.clear();
     puntosCtrl.clear();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Bono creado en Firestore y disponible para los usuarios!')));
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Bono segmentado publicado con éxito en Firestore!')));
   }
 
   @override
@@ -346,7 +388,7 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('ADMIN: CREAR BONO ESPECÍFICO EN VIVO', style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold)),
+          const Text('ADMIN: CREAR BONO SEGMENTADO EN VIVO', style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           TextField(controller: tituloCtrl, decoration: const InputDecoration(labelText: 'Nombre del Bono')),
           const SizedBox(height: 8),
@@ -356,17 +398,17 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: filtroTipo,
+                  value: filtroOcupacion,
                   dropdownColor: const Color(0xFF0F172A),
-                  items: ['Todos', 'Estudiante', 'Trabajador'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => setState(() => filtroTipo = v!),
+                  items: ['Todos', 'Estudiante', 'Trabajador', 'Desempleado', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => setState(() => filtroOcupacion = v!),
                   decoration: const InputDecoration(labelText: 'Ocupación'),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  initialValue: filtroSangre,
+                  value: filtroSangre,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Cualquiera', 'O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setState(() => filtroSangre = v!),
@@ -375,18 +417,40 @@ class _PanelAdminWidgetState extends State<PanelAdminWidget> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: filtroGenero,
+                  dropdownColor: const Color(0xFF0F172A),
+                  items: ['Cualquiera', 'Masculino', 'Femenino', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => setState(() => filtroGenero = v!),
+                  decoration: const InputDecoration(labelText: 'Género'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: filtroTrabaja,
+                  dropdownColor: const Color(0xFF0F172A),
+                  items: ['Cualquiera', 'Sí', 'No'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => setState(() => filtroTrabaja = v!),
+                  decoration: const InputDecoration(labelText: '¿Trabaja?'),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purpleAccent, foregroundColor: Colors.white),
             onPressed: _crearBono,
-            child: const Text('PUBLICAR BONO EN LA NUBE'),
+            child: const Text('PUBLICAR BONO SEGMENTADO'),
           ),
         ],
       ),
     );
   }
-
-  FieldValue fieldNameServerTime() => FieldValue.serverTimestamp();
 }
 
 // ==================== SECCIÓN DE MONEDERO Y RECLAMO DE BONOS ====================
@@ -398,7 +462,7 @@ class SeccionBonosScreen extends StatelessWidget {
     final userUid = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Monedero & Bonos en la Nube')),
+      appBar: AppBar(title: const Text('Monedero & Bonos Disponibles')),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance.collection('usuarios').doc(userUid).snapshots(),
         builder: (context, userSnap) {
@@ -407,6 +471,8 @@ class SeccionBonosScreen extends StatelessWidget {
           List reclamados = userData['bonosReclamados'] ?? [];
           String miSangre = userData['grupoSanguineo'] ?? 'O+';
           String miOcupacion = userData['gradoEstudios'] ?? 'Estudiante';
+          String miGenero = userData['genero'] ?? 'Masculino';
+          String miTrabaja = userData['trabaja'] ?? 'No';
 
           return StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('bonos').snapshots(),
@@ -419,18 +485,23 @@ class SeccionBonosScreen extends StatelessWidget {
                 children: [
                   Text('Tus Puntos: ${userData['saldoPuntos']} PTS', style: const TextStyle(fontSize: 20, color: Color(0xFF00FFCC), fontWeight: FontWeight.bold)),
                   const SizedBox(height: 15),
-                  const Text('BONOS DISPONIBLES SEGÚN TU PERFIL:', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
+                  const Text('BONOS ACTIVOS PARA TU PERFIL:', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   ...bonos.map((doc) {
                     var bono = doc.data() as Map<String, dynamic>;
                     String bonoId = doc.id;
                     String reqOcupacion = bono['dirigidoOcupacion'] ?? 'Todos';
                     String reqSangre = bono['dirigidoSangre'] ?? 'Cualquiera';
+                    String reqGenero = bono['dirigidoGenero'] ?? 'Cualquiera';
+                    String reqTrabaja = bono['dirigidoTrabaja'] ?? 'Cualquiera';
 
+                    // Filtros avanzados exactos
                     bool pasaOcupacion = reqOcupacion == 'Todos' || reqOcupacion == miOcupacion;
                     bool pasaSangre = reqSangre == 'Cualquiera' || reqSangre == miSangre;
+                    bool pasaGenero = reqGenero == 'Cualquiera' || reqGenero == miGenero;
+                    bool pasaTrabaja = reqTrabaja == 'Cualquiera' || reqTrabaja == miTrabaja;
 
-                    if (!pasaOcupacion || !pasaSangre) return const SizedBox.shrink();
+                    if (!pasaOcupacion || !pasaSangre || !pasaGenero || !pasaTrabaja) return const SizedBox.shrink();
 
                     bool yaReclamado = reclamados.contains(bonoId);
 
@@ -446,7 +517,7 @@ class SeccionBonosScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(bono['titulo'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                                Text('+${bono['puntos']} PTS | Sangre: $reqSangre | Ocupación: $reqOcupacion', style: const TextStyle(fontSize: 11, color: Colors.white54)),
+                                Text('+${bono['puntos']} PTS | Género: $reqGenero | Ocupación: $reqOcupacion', style: const TextStyle(fontSize: 11, color: Colors.white54)),
                               ],
                             ),
                           ),
@@ -464,7 +535,7 @@ class SeccionBonosScreen extends StatelessWidget {
                                     });
 
                                     if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Bono reclamado con éxito en la base de datos!')));
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('¡Bono reclamado con éxito!')));
                                   },
                             child: Text(yaReclamado ? 'RECLAMADO' : 'RECLAMAR'),
                           ),
@@ -499,7 +570,7 @@ class DatosPersonalesScreen extends StatelessWidget {
 
           final cedulaCtrl = TextEditingController(text: data['cedula']);
           final telefonoCtrl = TextEditingController(text: data['telefono']);
-          final generoCtrl = TextEditingController(text: data['genero']);
+          String genero = data['genero'] ?? 'Masculino';
           String sangre = data['grupoSanguineo'] ?? 'O+';
 
           return Padding(
@@ -510,10 +581,16 @@ class DatosPersonalesScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextField(controller: telefonoCtrl, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Número de Teléfono')),
                 const SizedBox(height: 12),
-                TextField(controller: generoCtrl, decoration: const InputDecoration(labelText: 'Género')),
+                DropdownButtonFormField<String>(
+                  value: genero,
+                  dropdownColor: const Color(0xFF0F172A),
+                  items: ['Masculino', 'Femenino', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => genero = v!,
+                  decoration: const InputDecoration(labelText: 'Género'),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: sangre,
+                  value: sangre,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => sangre = v!,
@@ -525,12 +602,12 @@ class DatosPersonalesScreen extends StatelessWidget {
                     await FirebaseFirestore.instance.collection('usuarios').doc(userUid).update({
                       'cedula': cedulaCtrl.text,
                       'telefono': telefonoCtrl.text,
-                      'genero': generoCtrl.text,
+                      'genero': genero,
                       'grupoSanguineo': sangre,
                     });
                     if (!context.mounted) return;
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datos personales guardados en la nube')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datos personales guardados con éxito')));
                   },
                   child: const Text('GUARDAR CAMBIOS'),
                 ),
@@ -561,15 +638,24 @@ class DatosLaboralesScreen extends StatelessWidget {
           final sueldoCtrl = TextEditingController(text: data['sueldo']);
           final dirCtrl = TextEditingController(text: data['direccionTrabajo']);
           String trabaja = data['trabaja'] ?? 'No';
+          String grado = data['gradoEstudios'] ?? 'Estudiante';
 
           return Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
+                DropdownButtonFormField<String>(
+                  value: grado,
+                  dropdownColor: const Color(0xFF0F172A),
+                  items: ['Estudiante', 'Trabajador', 'Desempleado', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => grado = v!,
+                  decoration: const InputDecoration(labelText: 'Ocupación / Grado de Estudios'),
+                ),
+                const SizedBox(height: 12),
                 TextField(controller: empresaCtrl, decoration: const InputDecoration(labelText: 'Empresa en la que trabajas')),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: trabaja,
+                  value: trabaja,
                   dropdownColor: const Color(0xFF0F172A),
                   items: ['Sí', 'No'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => trabaja = v!,
@@ -583,6 +669,7 @@ class DatosLaboralesScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () async {
                     await FirebaseFirestore.instance.collection('usuarios').doc(userUid).update({
+                      'gradoEstudios': grado,
                       'empresa': empresaCtrl.text,
                       'trabaja': trabaja,
                       'sueldo': sueldoCtrl.text,
@@ -590,7 +677,7 @@ class DatosLaboralesScreen extends StatelessWidget {
                     });
                     if (!context.mounted) return;
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datos laborales guardados en la nube')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datos laborales guardados con éxito')));
                   },
                   child: const Text('GUARDAR CAMBIOS'),
                 ),
@@ -603,48 +690,115 @@ class DatosLaboralesScreen extends StatelessWidget {
   }
 }
 
-class EstudiosScreen extends StatelessWidget {
-  const EstudiosScreen({super.key});
+class DatosBancariosScreen extends StatelessWidget {
+  const DatosBancariosScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final userUid = FirebaseAuth.instance.currentUser!.uid;
     return Scaffold(
-      appBar: AppBar(title: const Text('Estudios & TCU')),
+      appBar: AppBar(title: const Text('Datos Bancarios')),
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance.collection('usuarios').doc(userUid).get(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           var data = snapshot.data!.data() as Map<String, dynamic>;
 
-          String grado = data['gradoEstudios'] ?? 'Estudiante';
-          final tcuCtrl = TextEditingController(text: data['tcu']);
+          final bancoCtrl = TextEditingController(text: data['banco'] ?? '');
+          final nroCtrl = TextEditingController(text: data['nroCuenta'] ?? '');
+          String tipoCuenta = data['tipoCuenta'] ?? 'Ahorros';
 
           return Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(
               children: [
+                TextField(controller: bancoCtrl, decoration: const InputDecoration(labelText: 'Nombre del Banco (Ej. Banco de Venezuela, Banesco)')),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: grado,
+                  value: tipoCuenta,
                   dropdownColor: const Color(0xFF0F172A),
-                  items: ['Estudiante', 'Trabajador', 'Desempleado', 'Otro'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => grado = v!,
-                  decoration: const InputDecoration(labelText: 'Grado de estudios / Ocupación'),
+                  items: ['Ahorros', 'Corriente'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  onChanged: (v) => tipoCuenta = v!,
+                  decoration: const InputDecoration(labelText: 'Tipo de Cuenta'),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: tcuCtrl, decoration: const InputDecoration(labelText: 'TCU (Técnico Superior Universitario)')),
+                TextField(controller: nroCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Número de Cuenta (20 dígitos) o Teléfono Pago Móvil')),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
                     await FirebaseFirestore.instance.collection('usuarios').doc(userUid).update({
-                      'gradoEstudios': grado,
-                      'tcu': tcuCtrl.text,
+                      'banco': bancoCtrl.text,
+                      'tipoCuenta': tipoCuenta,
+                      'nroCuenta': nroCtrl.text,
                     });
                     if (!context.mounted) return;
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Estudios actualizados en la nube')));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Datos bancarios guardados con éxito')));
                   },
-                  child: const Text('GUARDAR CAMBIOS'),
+                  child: const Text('GUARDAR CUENTA BANCARIA'),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class TransaccionesScreen extends StatelessWidget {
+  const TransaccionesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final userUid = FirebaseAuth.instance.currentUser!.uid;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Recarga y Transacciones')),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance.collection('usuarios').doc(userUid).snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          var data = snapshot.data!.data() as Map<String, dynamic>;
+          double puntos = (data['saldoPuntos'] ?? 0.0).toDouble();
+
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Card(
+                  color: const Color(0xFF0F172A),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text('Saldo Disponible en Monedero', style: TextStyle(color: Colors.white54)),
+                        const SizedBox(height: 5),
+                        Text('${puntos.toStringAsFixed(0)} PTS', style: const TextStyle(color: Color(0xFF00FFCC), fontSize: 24, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text('HISTORIAL DE MOVIMIENTOS', style: TextStyle(color: Color(0xFF0088FF), fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.add_circle, color: Color(0xFF00FFCC)),
+                        title: const Text('Bono Inicial Registrado'),
+                        subtitle: const Text('Sistema Shadow Portal'),
+                        trailing: const Text('+100 PTS', style: TextStyle(color: Color(0xFF00FFCC), fontWeight: FontWeight.bold)),
+                      ),
+                      const Divider(color: Colors.white24),
+                      const ListTile(
+                        leading: Icon(Icons.info_outline, color: Colors.white54),
+                        title: Text('Sin transacciones adicionales'),
+                        subtitle: Text('Reclama bonos en el menú principal para verlos aquí.'),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
