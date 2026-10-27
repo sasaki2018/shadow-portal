@@ -64,7 +64,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     }
 
     if (email == 'admin@teamshadow.com' && pass != 'sasaki123') {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña de Administrador incorrecta (sasaki123)')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña de Administrador incorrecta')));
       return;
     }
 
@@ -148,7 +148,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
                     onPressed: () => setState(() => esLogin = !esLogin),
                     child: Text(esLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión', style: const TextStyle(color: Color(0xFF0088FF))),
                   ),
-                  const Text('Admin: admin@teamshadow.com | Pass: sasaki123', style: TextStyle(color: Colors.white38, fontSize: 10), textAlign: TextAlign.center),
                 ],
               ),
             ),
